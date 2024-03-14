@@ -1,4 +1,3 @@
-
 class Planning
   require 'date'
   attr_reader :full_week_slots
@@ -9,37 +8,21 @@ class Planning
     @busy_slots = busy_slots
     create_full_week_slots
   end
-  
 
   def find_available_slots(wanted_hour)
     @available_slots = {}
     @full_week_slots.each do |date, availability|
       @available_slots[date] = []
-      availability.delete_if { |_, value| value == "occupied" }
+      availability.delete_if { |_, value| value == 'occupied' }
       open_slots = availability.keys.chunk_while { |i, j| i.last + 1 == j.last }.to_a
       open_slots.each do |open_slot|
-        if open_slot.count >= wanted_hour
-          @available_slots[date] << open_slot.map { |hour| [hour,'available'] }.to_h 
-        end
+        @available_slots[date] << open_slot.map { |hour| [hour, 'available'] }.to_h if open_slot.count >= wanted_hour
       end
     end
     @available_slots
   end
 
-  def fetch_occupied_slots
-    @busy_slots.each do |busy_slot|
-      date = DateTime.parse(busy_slot[:start]).strftime('%d-%m-%Y')
-      start_hour = DateTime.parse(busy_slot[:start]).hour
-      end_hour = DateTime.parse(busy_slot[:end]).hour
-      occupied_slots = start_hour..end_hour - 1
-      occupied_slots.each do |slot|
-        @full_week_slots[date][(slot..slot + 1)] = 'occupied'
-      end
-    end
-    @full_week_slots
-  end
-
-  private 
+  private
 
   def create_full_week_slots
     beginning_of_week = get_monday(DateTime.parse(@busy_slots.first[:start]))
@@ -48,13 +31,21 @@ class Planning
     full_week.each do |day|
       date = day.strftime('%d-%m-%Y')
       full_day_work = 9..17
-      @full_week_slots[date] = full_day_work.map do |hour|
-        [(hour..hour + 1), 'available']
-      end.to_h
+      @full_week_slots[date] = full_day_work.to_h { |hour| [(hour..hour + 1), 'available'] }
     end
     fetch_occupied_slots
   end
-  
+
+  def fetch_occupied_slots
+    @busy_slots.each do |busy_slot|
+      date = DateTime.parse(busy_slot[:start]).strftime('%d-%m-%Y')
+      start_hour = DateTime.parse(busy_slot[:start]).hour
+      end_hour = DateTime.parse(busy_slot[:end]).hour
+      occupied_slots = start_hour..end_hour - 1
+      occupied_slots.each { |slot| @full_week_slots[date][(slot..slot + 1)] = 'occupied' }
+    end
+    @full_week_slots
+  end
 
   def get_monday(date)
     date - date.wday
